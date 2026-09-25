@@ -18,7 +18,7 @@
   <artifactId>cloud-client-api</artifactId>
 
   <url>https://github.com/NamazuStudios/namazu-cloud-client</url>
-  <name>Namazu Cloud Client Protocol API</name>
+  <name>Namazu Cloud Connect Protocol API</name>
   <description>
     The control-plane wire protocol shared between the open-source client element and the
     closed-source control-plane implementation (Namazu Cloud). This artifact is deliberately

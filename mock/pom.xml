@@ -19,7 +19,7 @@
 
   <artifactId>mock</artifactId>
 
-  <name>Namazu Cloud Client Mock Control Plane</name>
+  <name>Namazu Cloud Connect Mock Control Plane</name>
   <description>
     A development-only in-process stand-in for the Namazu Cloud control plane: a Jakarta @ServerEndpoint
     that runs the same mutual-HMAC handshake and loopback session request against the client element,
