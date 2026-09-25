@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0.
+  If a copy of the MPL was not distributed with this file, You can obtain one at
+  https://mozilla.org/MPL/2.0/.
+-->
+
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+  <name>Namazu Cloud Client</name>
+  <description>Open-source Elements element that connects outbound to the Namazu Cloud control plane over a mutually-authenticated WebSocket channel.</description>
+  <url>https://github.com/NamazuStudios/namazu-cloud-client</url>
+
+  <licenses>
+    <license>
+      <name>Mozilla Public License Version 2.0</name>
+      <url>https://www.mozilla.org/MPL/2.0/</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+
+  <developers>
+    <developer>
+      <name>Patrick Twohig</name>
+      <email>patrick@namazustudios.com</email>
+      <organization>Namazu Studios LLC</organization>
+      <organizationUrl>https://namazustudios.com</organizationUrl>
+    </developer>
+  </developers>
+
+  <scm>
+    <url>https://github.com/NamazuStudios/namazu-cloud-client</url>
+    <connection>scm:git:https://github.com/NamazuStudios/namazu-cloud-client.git</connection>
+    <developerConnection>scm:git:ssh://git@github.com/NamazuStudios/namazu-cloud-client.git</developerConnection>
+    <tag>HEAD</tag>
+  </scm>
+
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>com.namazustudios.cloud</groupId>
+  <artifactId>cloud-client</artifactId>
+  <version>0.1.0-SNAPSHOT</version>
+  <packaging>pom</packaging>
+
+  <properties>
+    <encoding>UTF-8</encoding>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <maven.compiler.source>21</maven.compiler.source>
+    <maven.compiler.target>21</maven.compiler.target>
+    <kotlin.version>2.1.0</kotlin.version>
+    <guice.version>7.0.0</guice.version>
+    <elements.version>3.9.0-rc-9</elements.version>
+    <junit.version>5.10.2</junit.version>
+    <maven.build.timestamp.format>yyyy-MM-dd'T'HH:mm:ss'Z'</maven.build.timestamp.format>
+  </properties>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>3.2.5</version>
+      </plugin>
+    </plugins>
+  </build>
+
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>org.junit</groupId>
+        <artifactId>junit-bom</artifactId>
+        <version>${junit.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <!--
+        The BOM for Namazu Elements incorporates all the official SDK packages with correct
+        version and scope. Importing it means Element dependencies never carry explicit versions.
+      -->
+      <dependency>
+        <groupId>dev.getelements.elements</groupId>
+        <artifactId>sdk-bom</artifactId>
+        <version>${elements.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <!--
+        The shared control-plane protocol artifact. Compiled as a plain jar and bundled into the
+        .elm's lib/ directory (never exported to the platform's shared API classpath).
+      -->
+      <dependency>
+        <groupId>com.namazustudios.cloud</groupId>
+        <artifactId>cloud-client-api</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
+  <modules>
+    <module>api</module>
+    <module>element</module>
+    <module>mock</module>
+    <module>debug</module>
+  </modules>
+
+  <profiles>
+    <profile>
+      <id>github-publish</id>
+      <distributionManagement>
+        <repository>
+          <id>github</id>
+          <url>https://maven.pkg.github.com/NamazuStudios/namazu-cloud-client</url>
+        </repository>
+        <snapshotRepository>
+          <id>github</id>
+          <url>https://maven.pkg.github.com/NamazuStudios/namazu-cloud-client</url>
+        </snapshotRepository>
+      </distributionManagement>
+    </profile>
+  </profiles>
+
+</project>

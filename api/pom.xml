@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0.
+  If a copy of the MPL was not distributed with this file, You can obtain one at
+  https://mozilla.org/MPL/2.0/.
+-->
+
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>com.namazustudios.cloud</groupId>
+    <artifactId>cloud-client</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+  </parent>
+
+  <artifactId>cloud-client-api</artifactId>
+
+  <url>https://github.com/NamazuStudios/namazu-cloud-client</url>
+  <name>Namazu Cloud Client Protocol API</name>
+  <description>
+    The control-plane wire protocol shared between the open-source client element and the
+    closed-source control-plane implementation (Namazu Cloud). This artifact is deliberately
+    dependency-free (JDK + Kotlin stdlib only) so both sides can bundle it without dragging in a
+    serialization framework; JSON encoding/decoding is provided by the hand-rolled
+    ControlWire codec. The DTOs here are plain Kotlin data classes and must stay Jackson-free.
+  </description>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.jetbrains.kotlin</groupId>
+      <artifactId>kotlin-stdlib</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <sourceDirectory>${project.basedir}/src/main/kotlin</sourceDirectory>
+    <plugins>
+      <plugin>
+        <groupId>org.jetbrains.kotlin</groupId>
+        <artifactId>kotlin-maven-plugin</artifactId>
+        <!-- Pinned (not inherited from the Elements BOM, which drives a newer compiler): the
+             closed-source control plane builds with Kotlin 2.1.x and must be able to read this
+             artifact's metadata. Bump this in lockstep with the consuming repo. -->
+        <version>2.1.0</version>
+        <executions>
+          <execution>
+            <id>compile</id>
+            <goals><goal>compile</goal></goals>
+          </execution>
+          <execution>
+            <id>test-compile</id>
+            <goals><goal>test-compile</goal></goals>
+            <configuration>
+              <sourceDirs>
+                <sourceDir>${project.basedir}/src/test/kotlin</sourceDir>
+              </sourceDirs>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+
+</project>

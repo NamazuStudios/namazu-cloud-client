@@ -1,0 +1,14 @@
+# Build output
+target/
+**/target/
+
+# Local dev harness secrets/config
+debug/local.properties
+
+# IntelliJ / editor
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store

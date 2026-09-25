@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0.
+  If a copy of the MPL was not distributed with this file, You can obtain one at
+  https://mozilla.org/MPL/2.0/.
+-->
+
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>com.namazustudios.cloud</groupId>
+    <artifactId>cloud-client</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+  </parent>
+
+  <artifactId>debug</artifactId>
+  <name>Namazu Cloud Client Local Dev Harness</name>
+  <description>
+    Runs the open-source client element together with the mock control-plane element in the local
+    Elements SDK runtime (never deployed).
+  </description>
+
+  <build>
+    <sourceDirectory>${project.basedir}/src/main/kotlin</sourceDirectory>
+    <plugins>
+      <plugin>
+        <groupId>org.jetbrains.kotlin</groupId>
+        <artifactId>kotlin-maven-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>compile</id>
+            <goals><goal>compile</goal></goals>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>3.5.0</version>
+        <configuration>
+          <mainClass>RunKt</mainClass>
+          <!-- sdk/sdk-local are `provided` scope in the element modules (supplied by the Elements
+               runtime in a real deployment), but here exec:java IS the runtime, so provided-scope
+               classes must be on its classpath. classpathScope=compile includes provided. -->
+          <classpathScope>compile</classpathScope>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+
+  <dependencies>
+    <dependency>
+      <groupId>com.namazustudios.cloud</groupId>
+      <artifactId>cloud-client-api</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.jetbrains.kotlin</groupId>
+      <artifactId>kotlin-stdlib</artifactId>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>dev.getelements.elements</groupId>
+      <artifactId>sdk-local</artifactId>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>dev.getelements.elements</groupId>
+      <artifactId>sdk-local-maven</artifactId>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>dev.getelements.elements</groupId>
+      <artifactId>sdk-logback</artifactId>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>ch.qos.logback</groupId>
+      <artifactId>logback-classic</artifactId>
+      <scope>compile</scope>
+    </dependency>
+  </dependencies>
+
+</project>
