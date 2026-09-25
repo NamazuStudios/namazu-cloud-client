@@ -58,6 +58,7 @@
     <morphia.version>2.4.14</morphia.version>
     <mongodb.version>4.10.2</mongodb.version>
     <junit.version>5.10.2</junit.version>
+    <dokka.version>2.0.0</dokka.version>
     <maven.build.timestamp.format>yyyy-MM-dd'T'HH:mm:ss'Z'</maven.build.timestamp.format>
   </properties>
 
@@ -67,6 +68,42 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
         <version>3.2.5</version>
+      </plugin>
+      <!--
+        Source jars for every published module. Maven Central requires them. The `ui` module
+        (pom packaging) opts out in its own pom since it carries no Java/Kotlin sources.
+      -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-source-plugin</artifactId>
+        <version>3.3.1</version>
+        <executions>
+          <execution>
+            <id>attach-sources</id>
+            <phase>prepare-package</phase>
+            <goals><goal>jar</goal></goals>
+          </execution>
+        </executions>
+      </plugin>
+      <!--
+        Javadoc jars via Dokka (supports Kotlin sources natively). Maven Central requires a
+        non-empty javadoc artifact for every published jar.
+      -->
+      <plugin>
+        <groupId>org.jetbrains.dokka</groupId>
+        <artifactId>dokka-maven-plugin</artifactId>
+        <version>${dokka.version}</version>
+        <configuration>
+          <sourceDirectories>
+            <dir>${project.basedir}/src/main/kotlin</dir>
+          </sourceDirectories>
+        </configuration>
+        <executions>
+          <execution>
+            <phase>prepare-package</phase>
+            <goals><goal>javadocJar</goal></goals>
+          </execution>
+        </executions>
       </plugin>
     </plugins>
   </build>
@@ -117,6 +154,56 @@
   </modules>
 
   <profiles>
+    <!--
+      Publishes release artifacts to Maven Central. Activated only by the release workflow
+      (`mvn -Pcentral-publish clean deploy`); requires the CENTRAL_USERNAME/CENTRAL_PASSWORD
+      server credentials and GPG signing material provided by actions/setup-java.
+    -->
+    <profile>
+      <id>central-publish</id>
+      <build>
+        <plugins>
+          <!-- Central Publishing Plugin -->
+          <plugin>
+            <groupId>org.sonatype.central</groupId>
+            <artifactId>central-publishing-maven-plugin</artifactId>
+            <version>0.9.0</version>
+            <extensions>true</extensions>
+            <configuration>
+              <publishingServerId>central</publishingServerId>
+              <autoPublish>true</autoPublish>
+              <waitUntil>published</waitUntil>
+              <waitMaxTime>3600</waitMaxTime>
+            </configuration>
+          </plugin>
+          <!-- GPG Plugin (Required for Maven Central) -->
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-gpg-plugin</artifactId>
+            <version>3.2.4</version>
+            <executions>
+              <execution>
+                <id>sign-artifacts</id>
+                <phase>verify</phase>
+                <goals>
+                  <goal>sign</goal>
+                </goals>
+                <configuration>
+                  <gpgArguments>
+                    <arg>--pinentry-mode</arg>
+                    <arg>loopback</arg>
+                  </gpgArguments>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+    <!--
+      Publishes artifacts to GitHub Packages. Activated by the snapshot-publish workflow. Releases
+      and snapshots both land here; Maven routes each by version.
+    -->
     <profile>
       <id>github-publish</id>
       <distributionManagement>

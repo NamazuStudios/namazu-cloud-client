@@ -28,14 +28,21 @@
 
   <profiles>
     <!--
-      Active by default so that a plain `mvn install` can never produce a .elm whose dashboard
-      plugin is silently missing - the failure is invisible at runtime, with no build error. Deactivate
-      with -P'!build-ui' for a Kotlin-only build that skips Node entirely.
+      Active unless -Dbuild-ui.skip=true, so that a plain `mvn install` can never produce a .elm
+      whose dashboard plugin is silently missing - the failure is invisible at runtime, with no
+      build error.
+
+      Property-based activation (rather than activeByDefault) is deliberate: activating any other
+      profile with -P would otherwise deactivate this one, and a publish build like
+      `mvn -Pcentral-publish clean deploy` would then push a dashboard-less .elm to Maven Central
+      without any error.
     -->
     <profile>
       <id>build-ui</id>
       <activation>
-        <activeByDefault>true</activeByDefault>
+        <property>
+          <name>!build-ui.skip</name>
+        </property>
       </activation>
       <build>
         <plugins>
@@ -66,5 +73,29 @@
       </build>
     </profile>
   </profiles>
+
+  <!--
+    This module is pom-packaging and carries no Java/Kotlin sources, so the root pom's
+    source-jar and Dokka javadoc-jar generations (Maven Central requirements for published jars)
+    have nothing to do here. Skip them rather than attaching empty artifacts.
+  -->
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-source-plugin</artifactId>
+        <configuration>
+          <skipSource>true</skipSource>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.jetbrains.dokka</groupId>
+        <artifactId>dokka-maven-plugin</artifactId>
+        <configuration>
+          <skip>true</skip>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
 
 </project>

@@ -1,0 +1,77 @@
+# This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0.
+# If a copy of the MPL was not distributed with this file, You can obtain one at
+# https://mozilla.org/MPL/2.0/.
+
+name: Snapshot Publish
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+concurrency:
+  group: namazu-cloud-client-snapshot
+  cancel-in-progress: false
+
+jobs:
+
+  preflight:
+    name: Verify Snapshot Version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+
+    steps:
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Get current version
+        id: version
+        run: |
+          VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Current project version: $VERSION"
+
+      - name: Ensure Snapshot Version
+        run: |
+          CURRENT="${{ steps.version.outputs.version }}"
+
+          # Exit if NOT a snapshot
+          if [[ "$CURRENT" != *-SNAPSHOT ]]; then
+            echo "::error::Expected a -SNAPSHOT version on main, but found '$CURRENT'."
+            echo "The main branch must end with -SNAPSHOT; releases to Maven Central are cut by release.yaml."
+            exit 1
+          fi
+
+  publish:
+    name: Publish Snapshot to GitHub Packages
+    needs: preflight
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21 and Maven Credentials
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+          server-id: github
+          server-username: GITHUB_ACTOR
+          server-password: GITHUB_TOKEN
+
+      # The full test suite runs as part of `deploy` — it is fast (~1 min) and this repo has no
+      # long-running integration tests, so unlike namazu-conductor there is no separate IT job to
+      # fan out to or skip.
+      - name: Build and Publish Snapshot
+        run: mvn -B --no-transfer-progress -Pgithub-publish clean deploy -pl '!:debug'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

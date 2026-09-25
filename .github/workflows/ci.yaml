@@ -4,8 +4,9 @@
 
 name: CI
 
+# Pushes to main are built (and deployed as snapshots) by snapshot-publish.yaml; running this too
+# would just repeat the same build. PRs are validated here.
 on:
-  push:
   pull_request:
 
 jobs:
