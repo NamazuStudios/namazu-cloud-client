@@ -4,6 +4,8 @@
 
 package com.namazustudios.cloud.element.persistence
 
+import dev.getelements.elements.sdk.annotation.ElementServiceExport
+import dev.getelements.elements.sdk.annotation.ElementServiceImplementation
 import dev.getelements.elements.sdk.dao.EntityRegistry
 
 /**
@@ -11,9 +13,12 @@ import dev.getelements.elements.sdk.dao.EntityRegistry
  * these with the `Mapper` — in the element's classloader — before any REST endpoint is served,
  * which is what lets [CloudConnectStateDocument] be queried without a discriminator.
  *
- * Bound in [com.namazustudios.cloud.element.guice.CloudClientModule]; no eager binding is needed
- * because the platform instantiates the registry itself during element load.
+ * Annotated per the `EntityRegistry` SPI contract: the platform resolves the export through the
+ * element's service locator (`locator.findInstance(EntityRegistry.class)`), so the binding must
+ * also be exposed from this element's Guice environment — see [com.namazustudios.cloud.element.guice.CloudClientModule].
  */
+@ElementServiceImplementation
+@ElementServiceExport(EntityRegistry::class)
 class CloudConnectEntityRegistry : EntityRegistry {
     override fun entityClasses(): List<Class<*>> = listOf(
         CloudConnectStateDocument::class.java,

@@ -7,7 +7,8 @@
 // discovers CloudClientModule and the wire-protocol elements it bundles.
 @ElementDefinition(recursive = true)
 @GuiceElementModule(CloudClientModule.class)
-@ElementService(EntityRegistry.class)
+// EntityRegistry is exported from CloudConnectEntityRegistry via @ElementServiceExport; a
+// package-level @ElementService for it would be redundant.
 @ElementDependency("dev.getelements.elements.sdk")
 @ElementDependency("dev.getelements.elements.sdk.dao")
 @ElementDependency("dev.getelements.elements.sdk.service")
@@ -23,7 +24,5 @@ import com.namazustudios.cloud.element.guice.CloudClientModule;
 import dev.getelements.elements.sdk.annotation.ElementDefinition;
 import dev.getelements.elements.sdk.annotation.ElementDependency;
 import dev.getelements.elements.sdk.annotation.ElementPackageRequest;
-import dev.getelements.elements.sdk.annotation.ElementService;
-import dev.getelements.elements.sdk.dao.EntityRegistry;
 import dev.getelements.elements.sdk.dao.annotation.MorphiaPackageRequest;
 import dev.getelements.elements.sdk.spi.guice.annotations.GuiceElementModule;
