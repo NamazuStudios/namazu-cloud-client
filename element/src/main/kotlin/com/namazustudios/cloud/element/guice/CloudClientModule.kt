@@ -6,13 +6,11 @@ package com.namazustudios.cloud.element.guice
 
 import com.google.inject.PrivateModule
 import com.google.inject.Singleton
-import com.namazustudios.cloud.element.persistence.CloudConnectEntityRegistry
 import com.namazustudios.cloud.element.persistence.CloudConnectStateDao
 import com.namazustudios.cloud.element.service.CloudClientService
 import com.namazustudios.cloud.element.service.ControlCommandDispatcher
 import com.namazustudios.cloud.element.service.ControlSessionMinter
 import com.namazustudios.cloud.element.service.ShadowUserService
-import dev.getelements.elements.sdk.dao.EntityRegistry
 
 /**
  * Wires the cloud-client element. [CloudClientService] is an eager singleton so the outbound
@@ -28,13 +26,10 @@ class CloudClientModule : PrivateModule() {
         // Backs the dashboard's persisted on/off switch. Never throws into the channel lifecycle —
         // a database outage degrades to in-memory-only state rather than taking the connector down.
         bind(CloudConnectStateDao::class.java).`in`(Singleton::class.java)
-        // The platform resolves the entity registry through the element's service locator
-        // (locator.findInstance(EntityRegistry.class)), which reads bindings from the element's
-        // injector. Binding alone is not enough: without expose() the PrivateModule keeps the
-        // binding private and the platform would never see CloudConnectEntityRegistry, so our
-        // @Entity classes would silently go unregistered with Morphia.
-        bind(EntityRegistry::class.java).to(CloudConnectEntityRegistry::class.java).`in`(Singleton::class.java)
-        expose(EntityRegistry::class.java)
+        // CloudConnectEntityRegistry carries @ElementServiceExport(EntityRegistry::class), which the
+        // loader's GuiceSpiModule binds AND exposes automatically. Binding it here as well fails the
+        // whole element at load time with Guice/BindingAlreadySet - and the element is then skipped
+        // silently ("Caught exception loading element. Skipping."), so never re-bind exported services.
         bind(CloudClientService::class.java).asEagerSingleton()
         expose(CloudClientService::class.java)
     }

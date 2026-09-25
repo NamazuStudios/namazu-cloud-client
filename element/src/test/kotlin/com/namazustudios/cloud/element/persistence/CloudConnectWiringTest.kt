@@ -4,20 +4,14 @@
 
 package com.namazustudios.cloud.element.persistence
 
-import com.google.inject.AbstractModule
-import com.google.inject.Guice
-import com.google.inject.Key
-import com.google.inject.Stage
-import com.google.inject.name.Names
 import com.mongodb.client.MongoClient
 import com.mongodb.client.MongoClients
-import com.namazustudios.cloud.element.CloudClientAttributes
-import com.namazustudios.cloud.element.guice.CloudClientModule
-import dev.getelements.elements.sdk.dao.EntityRegistry
-import dev.getelements.elements.sdk.dao.SessionDao
-import dev.getelements.elements.sdk.dao.UserDao
+import com.namazustudios.cloud.element.service.CloudClientService
+import dev.getelements.elements.sdk.annotation.ElementServiceImplementation
 import dev.morphia.Datastore
 import dev.morphia.Morphia
+import dev.getelements.elements.sdk.dao.EntityRegistry
+import dev.getelements.elements.sdk.record.ElementServiceRecord
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
@@ -27,16 +21,18 @@ import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
-import java.lang.reflect.Proxy
 
 /**
- * Retires the one risk the unit tests cannot: that the element's wiring resolves the way the
- * platform actually resolves it.
+ * Retires the risks the unit tests cannot otherwise see, by mirroring exactly what the platform
+ * does at element load.
  *
- *  - [guiceExposure] mirrors `GuiceServiceLocator.findInstance`, which is how the platform's
- *    `MongoElementEntityRegistrar` discovers the [EntityRegistry] export. The registry binding
- *    must be visible outside [CloudClientModule]'s PrivateModule environment or the entity
- *    classes silently go unregistered.
+ *  - [entityRegistryExport] mirrors the discovery step: the loader scans
+ *    `@ElementServiceExport` via `ElementServiceRecord.fromClass` (the same record
+ *    `GuiceSpiModule.bindAndExposeService` consumes). It also guards the inverse failure mode: an
+ *    additional manual `bind`/`expose` of `EntityRegistry` in [com.namazustudios.cloud.element.guice.CloudClientModule]
+ *    would collide with the loader's own binding and fail the element with
+ *    `Guice/BindingAlreadySet` — which the loader swallows as "Caught exception loading element.
+ *    Skipping.", so the element would silently not start.
  *
  *  - The round-trip tests mirror `MongoElementEntityRegistrar.applyChanges`, which maps each
  *    class from `registry.entityClasses()` onto a fresh `Datastore` — exercising the real
@@ -44,6 +40,7 @@ import java.lang.reflect.Proxy
  *
  * The Morphia tests run against the local MongoDB from `services-dev/docker-compose.yml` and skip
  * (rather than fail) when it is unreachable, so a plain `mvn test` without services still passes.
+ * The full element boot is additionally verified by the `debug` module's loopback harness.
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class CloudConnectWiringTest {
@@ -55,26 +52,6 @@ class CloudConnectWiringTest {
         private const val COLLECTION = "cloud_connect_state"
 
         private val mongoUri = System.getenv("MONGODB_URI") ?: "mongodb://localhost:27017"
-
-        /**
-         * A `Datastore` that must never be called — it exists only so the Guice graph is complete.
-         * A JDK proxy throws on any invocation, making accidental use loud rather than subtle.
-         */
-        private val datastoreStub: Datastore = Proxy.newProxyInstance(
-            Datastore::class.java.classLoader,
-            arrayOf(Datastore::class.java),
-        ) { _, method, _ -> error("stub Datastore must not be used: ${method.name}") } as Datastore
-
-        /** Even in TOOL stage Guice validates dependency keys; the platform supplies these at runtime. */
-        private val sessionDaoStub: SessionDao = Proxy.newProxyInstance(
-            SessionDao::class.java.classLoader,
-            arrayOf(SessionDao::class.java),
-        ) { _, method, _ -> error("stub SessionDao must not be used: ${method.name}") } as SessionDao
-
-        private val userDaoStub: UserDao = Proxy.newProxyInstance(
-            UserDao::class.java.classLoader,
-            arrayOf(UserDao::class.java),
-        ) { _, method, _ -> error("stub UserDao must not be used: ${method.name}") } as UserDao
 
         private var client: MongoClient? = null
     }
@@ -104,30 +81,41 @@ class CloudConnectWiringTest {
     }
 
     @Test
-    fun `guice exposure - entity registry is visible outside the private module`() {
-        val injector = Guice.createInjector(
-            Stage.TOOL,
-            object : AbstractModule() {
-                override fun configure() {
-                    bind(Datastore::class.java).toInstance(datastoreStub)
-                    bind(SessionDao::class.java).toInstance(sessionDaoStub)
-                    bind(UserDao::class.java).toInstance(userDaoStub)
-                    // Blank values keep CloudClientService inert (NOT_CONFIGURED) if it were ever
-                    // instantiated outside TOOL stage.
-                    bind(String::class.java).annotatedWith(Names.named(CloudClientAttributes.URL)).toInstance("")
-                    bind(String::class.java).annotatedWith(Names.named(CloudClientAttributes.ID)).toInstance("")
-                    bind(String::class.java).annotatedWith(Names.named(CloudClientAttributes.SECRET)).toInstance("")
-                    bind(String::class.java).annotatedWith(Names.named(CloudClientAttributes.RETRY_SECONDS)).toInstance("5")
-                    bind(String::class.java).annotatedWith(Names.named(CloudClientAttributes.SESSION_TTL_MINUTES)).toInstance("60")
-                    install(CloudClientModule())
-                }
-            },
-        )
+    fun `entity registry is exported by annotation, exactly once`() {
+        val records = ElementServiceRecord.fromClass(CloudConnectEntityRegistry::class.java).toList()
 
-        // This is the lookup the platform performs; before the expose() fix it returned null.
-        val binding = injector.getExistingBinding(Key.get(EntityRegistry::class.java))
-        assertNotNull(binding, "EntityRegistry must be resolvable from the element injector")
-        assertTrue(binding!!.provider.get() is CloudConnectEntityRegistry)
+        assertEquals(1, records.size, "CloudConnectEntityRegistry must carry exactly one @ElementServiceExport")
+
+        val record = records[0]
+        assertTrue(
+            record.export().exposed().contains(EntityRegistry::class.java),
+            "The export must expose EntityRegistry",
+        )
+        assertEquals(
+            CloudConnectEntityRegistry::class.java,
+            record.implementation().type(),
+            "The loader must bind EntityRegistry to CloudConnectEntityRegistry",
+        )
+    }
+
+    @Test
+    fun `cloud client service is exported for the Jersey bridge`() {
+        // ElementBinder (the Jersey/HK2 bridge) only injects element services whose export carries
+        // expose=true; without the export, CloudConnectResource cannot receive the service and every
+        // REST request fails with a 500 UnsatisfiedDependencyException.
+        val records = ElementServiceRecord.fromClass(CloudClientService::class.java).toList()
+
+        assertEquals(1, records.size, "CloudClientService must carry exactly one @ElementServiceExport")
+        assertTrue(records[0].export().expose(), "The export must be visible to the Jersey bridge")
+        // A plain @ElementServiceExport (no @ElementServiceImplementation) must report the
+        // DefaultImplementation marker: that is the loader's signal to defer binding to
+        // CloudClientModule rather than bind the type itself (which would collide with the
+        // module's eager binding and fail the element with Guice/BindingAlreadySet).
+        assertEquals(
+            ElementServiceImplementation.DefaultImplementation::class.java,
+            records[0].implementation().type(),
+            "The export must defer binding to CloudClientModule",
+        )
     }
 
     @Test

@@ -9,8 +9,10 @@ import com.namazustudios.cloud.config.CloudClientConfig
 import com.namazustudios.cloud.element.CloudClientAttributes
 import com.namazustudios.cloud.element.channel.ControlChannel
 import com.namazustudios.cloud.element.persistence.CloudConnectStateDao
+import com.namazustudios.cloud.element.persistence.CloudConnectStateDocument
 import com.namazustudios.cloud.element.transport.WebSocketTransportPicker
 import com.namazustudios.cloud.protocol.ControlMac
+import dev.getelements.elements.sdk.annotation.ElementServiceExport
 import jakarta.inject.Inject
 import jakarta.inject.Singleton
 import org.slf4j.LoggerFactory
@@ -20,6 +22,12 @@ import java.util.concurrent.TimeUnit
 /**
  * Owns the control channel lifecycle. Binds eagerly (via [CloudClientModule]) so the connector
  * starts dialing out as soon as the element loads.
+ *
+ * [ElementServiceExport] is required for the REST surface: the platform's Jersey bridge
+ * (`ElementBinder`) builds the resource's HK2 locator from the element record's exported services,
+ * so without the export `CloudConnectResource` cannot receive this instance and every request
+ * fails with an UnsatisfiedDependencyException (surfacing as HTTP 500). The binding itself is
+ * supplied by [CloudClientModule] — the export annotation only declares and exposes it.
  *
  * Two switches govern whether the connector dials out, and they are independent:
  *
@@ -38,6 +46,7 @@ import java.util.concurrent.TimeUnit
  * stops that worker; the retry delay is a wait on [lifecycleLock] rather than a bare sleep, so a
  * disable takes effect immediately instead of after the remainder of the backoff.
  */
+@ElementServiceExport(CloudClientService::class)
 @Singleton
 class CloudClientService @Inject constructor(
     private val dispatcher: ControlCommandDispatcher,
@@ -144,6 +153,13 @@ class CloudClientService @Inject constructor(
 
     /** The resolved configuration, or `null` before [start] has run. */
     fun resolvedConfig(): ResolvedConfig? = config
+
+    /**
+     * The persisted state document, for the dashboard's timestamps. The DAO itself is deliberately
+     * not exposed to the REST layer — it is an internal of this service, and the platform's Jersey
+     * bridge would need an explicit `@ElementServiceExport` on it to inject it into resources.
+     */
+    fun persistedState(): CloudConnectStateDocument? = stateDao.load()
 
     /**
      * The shared secret in plaintext, for the superuser-gated reveal endpoint only. Callers are

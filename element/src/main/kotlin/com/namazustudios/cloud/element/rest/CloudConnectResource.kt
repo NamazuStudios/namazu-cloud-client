@@ -6,7 +6,6 @@ package com.namazustudios.cloud.element.rest
 
 import com.namazustudios.cloud.config.CloudClientConfig
 import com.namazustudios.cloud.element.CloudClientApplication
-import com.namazustudios.cloud.element.persistence.CloudConnectStateDao
 import com.namazustudios.cloud.element.service.CloudClientService
 import dev.getelements.elements.sdk.model.Headers.SESSION_SECRET
 import dev.getelements.elements.sdk.model.user.User
@@ -42,9 +41,6 @@ class CloudConnectResource {
 
     @Inject
     lateinit var cloudClientService: CloudClientService
-
-    @Inject
-    lateinit var stateDao: CloudConnectStateDao
 
     @Inject
     lateinit var userService: UserService
@@ -100,7 +96,7 @@ class CloudConnectResource {
 
     private fun buildStatus(): ConnectStatusDto {
         val config = cloudClientService.resolvedConfig()
-        val persisted = stateDao.load()
+        val persisted = cloudClientService.persistedState()
         val state = cloudClientService.connectionState()
 
         val parameters = ConnectParametersDto(
