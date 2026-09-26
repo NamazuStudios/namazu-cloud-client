@@ -19,11 +19,12 @@
 
   <artifactId>element</artifactId>
 
-  <name>Namazu Cloud Client Element</name>
+  <name>Namazu Cloud Connect</name>
   <description>
-    The open-source Elements element that maintains an outbound, mutually-authenticated WebSocket
-    channel to the Namazu Cloud control plane and mints Elements sessions (Elements-SessionSecret)
-    on request, letting Namazu Cloud operate the instance's REST APIs remotely.
+    Namazu Cloud Connect, the client connector for Namazu Cloud: the open-source Elements element
+    that maintains an outbound, mutually-authenticated WebSocket channel to the Namazu Cloud
+    control plane and mints Elements sessions (Elements-SessionSecret) on request, letting Namazu
+    Cloud operate the instance's REST APIs remotely.
   </description>
 
   <properties>
@@ -63,6 +64,46 @@
     <dependency>
       <groupId>com.google.inject</groupId>
       <artifactId>guice</artifactId>
+    </dependency>
+    <!--
+      Jakarta RS + Swagger, for the REST surface behind the "Namazu Cloud Connect" dashboard page.
+      All provided by the platform; versions come from the Elements BOM.
+    -->
+    <dependency>
+      <groupId>jakarta.ws.rs</groupId>
+      <artifactId>jakarta.ws.rs-api</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.swagger.core.v3</groupId>
+      <artifactId>swagger-annotations</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.swagger.core.v3</groupId>
+      <artifactId>swagger-jaxrs2-jakarta</artifactId>
+    </dependency>
+    <!--
+      Persistence for the dashboard's on/off switch and observed connection state. The shared
+      Morphia Datastore comes from the platform's mongo element at runtime (see the
+      dev.getelements.elements.sdk.mongo @ElementDependency in package-info.java); morphia-core and
+      the driver are pulled in `provided` purely so this module compiles against them. Do not
+      bundle an implementation - the platform already owns the Mongo client, codecs and index
+      lifecycle, and a second one here would not see the SDK's registered codecs.
+    -->
+    <dependency>
+      <groupId>dev.getelements.elements</groupId>
+      <artifactId>sdk-mongo</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>dev.morphia.morphia</groupId>
+      <artifactId>morphia-core</artifactId>
+      <version>${morphia.version}</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.mongodb</groupId>
+      <artifactId>mongodb-driver-sync</artifactId>
+      <version>${mongodb.version}</version>
+      <scope>provided</scope>
     </dependency>
     <!--
       Jakarta WebSocket. The server API (annotations, Session, CloseReason) is provided by the
@@ -184,6 +225,30 @@
               </target>
             </configuration>
           </execution>
+          <!--
+            Stages static and dashboard-UI content into the .elm if it is available.
+
+            Without this execution the `ui/` module's plugin.bundle.js is built by npm and written
+            into src/main/ui/, but never reaches the .elm archive - the dashboard would then
+            silently show no "Namazu Cloud Connect" entry, with no build error to explain it.
+            Both copies are failonerror="false" so the module still builds before the ui/ module has
+            ever been run.
+          -->
+          <execution>
+            <id>elm-stage-static-content</id>
+            <phase>prepare-package</phase>
+            <goals><goal>run</goal></goals>
+            <configuration>
+              <target>
+                <copy todir="${elm.element.dir}/static" failonerror="false">
+                  <fileset dir="${basedir}/src/main/static" erroronmissingdir="false" includes="**/*" />
+                </copy>
+                <copy todir="${elm.element.dir}/ui" failonerror="false">
+                  <fileset dir="${basedir}/src/main/ui" erroronmissingdir="false" includes="**/*" />
+                </copy>
+              </target>
+            </configuration>
+          </execution>
           <execution>
             <id>elm-write-manifest</id>
             <phase>prepare-package</phase>
@@ -211,8 +276,11 @@ Element-Builtin-Spis=${elm.builtin.spis}
             <goals><goal>run</goal></goals>
             <configuration>
               <target>
+                <mkdir dir="${elm.element.dir}/api" />
                 <mkdir dir="${elm.element.dir}/lib" />
                 <mkdir dir="${elm.element.dir}/classpath" />
+                <mkdir dir="${elm.element.dir}/static" />
+                <mkdir dir="${elm.element.dir}/ui" />
                 <zip destfile="${elm.staging.dir}.elm" basedir="${elm.staging.dir}" />
               </target>
             </configuration>

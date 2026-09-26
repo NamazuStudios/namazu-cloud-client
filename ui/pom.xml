@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0.
+  If a copy of the MPL was not distributed with this file, You can obtain one at
+  https://mozilla.org/MPL/2.0/.
+-->
+
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>com.namazustudios.cloud</groupId>
+    <artifactId>cloud-client</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+  </parent>
+
+  <artifactId>ui</artifactId>
+  <packaging>pom</packaging>
+  <name>Namazu Cloud Connect Dashboard UI</name>
+  <description>
+    Builds the "Namazu Cloud Connect" superuser dashboard plugin bundle from TypeScript source and
+    writes it directly into element/src/main/ui/superuser/, which the element module then stages
+    into the .elm archive (see the elm-stage-static-content execution in element/pom.xml).
+  </description>
+
+  <profiles>
+    <!--
+      Active by default so that a plain `mvn install` can never produce a .elm whose dashboard
+      plugin is silently missing - the failure is invisible at runtime, with no build error. Deactivate
+      with -P'!build-ui' for a Kotlin-only build that skips Node entirely.
+    -->
+    <profile>
+      <id>build-ui</id>
+      <activation>
+        <activeByDefault>true</activeByDefault>
+      </activation>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>com.github.eirslett</groupId>
+            <artifactId>frontend-maven-plugin</artifactId>
+            <version>1.15.0</version>
+            <configuration>
+              <nodeVersion>v22.14.0</nodeVersion>
+            </configuration>
+            <executions>
+              <execution>
+                <id>install-node-and-npm</id>
+                <goals><goal>install-node-and-npm</goal></goals>
+              </execution>
+              <execution>
+                <id>npm-install</id>
+                <goals><goal>npm</goal></goals>
+              </execution>
+              <execution>
+                <id>npm-build</id>
+                <goals><goal>npm</goal></goals>
+                <configuration><arguments>run build</arguments></configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
+
+</project>

@@ -9,8 +9,8 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 
-  <name>Namazu Cloud Client</name>
-  <description>Open-source Elements element that connects outbound to the Namazu Cloud control plane over a mutually-authenticated WebSocket channel.</description>
+  <name>Namazu Cloud Connect</name>
+  <description>Namazu Cloud Connect, the client connector for Namazu Cloud: an open-source Elements element that connects outbound to the Namazu Cloud control plane over a mutually-authenticated WebSocket channel.</description>
   <url>https://github.com/NamazuStudios/namazu-cloud-client</url>
 
   <licenses>
@@ -51,6 +51,12 @@
     <kotlin.version>2.1.0</kotlin.version>
     <guice.version>7.0.0</guice.version>
     <elements.version>3.9.0-rc-9</elements.version>
+    <!--
+      Compile-time only: both are `provided` at runtime, supplied by the platform's mongo element.
+      Pinned explicitly because the Elements BOM does not manage them.
+    -->
+    <morphia.version>2.4.14</morphia.version>
+    <mongodb.version>4.10.2</mongodb.version>
     <junit.version>5.10.2</junit.version>
     <maven.build.timestamp.format>yyyy-MM-dd'T'HH:mm:ss'Z'</maven.build.timestamp.format>
   </properties>
@@ -98,6 +104,12 @@
   </dependencyManagement>
 
   <modules>
+    <!--
+      Must build before `element` - it writes plugin.bundle.js directly into
+      element/src/main/ui/superuser/, which element's package phase then stages into the .elm
+      (see the elm-stage-static-content execution in element/pom.xml).
+    -->
+    <module>ui</module>
     <module>api</module>
     <module>element</module>
     <module>mock</module>

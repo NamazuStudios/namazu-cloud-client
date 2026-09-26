@@ -1,0 +1,11 @@
+{
+  "schema": "1",
+  "entries": [
+    {
+      "label": "Namazu Cloud Connect",
+      "icon": "Cloud",
+      "bundlePath": "plugin.bundle.js",
+      "route": "namazu-cloud-connect"
+    }
+  ]
+}
